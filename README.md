@@ -1,4 +1,4 @@
-# ESP Boiler  
+# ESP Damper  
 ## HVAC Damper Controller
 
 This project is designed to monitor and control HVAC dampers using the **TAC-910 protocol**.  
