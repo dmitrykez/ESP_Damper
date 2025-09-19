@@ -29,8 +29,8 @@ It utilizes the **ESP32-S2-WROOM** microcontroller, which supports up to 4 RMT c
   When an MQTT command is received, it’s converted into the appropriate IR format.  
   The relevant RMT channel switches to TX mode, sends the command to the TAC-910, and then returns to RX mode.
 
-- **FW update**  
-  The FW can be updated using OTA by accessing the controller in your browser using controller IP address.
+- **OTA Firmware Updates**  
+  Firmware can be updated over-the-air (OTA) by accessing the controller through its IP address in a web browser.
 
 ---
 
