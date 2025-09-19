@@ -63,6 +63,6 @@ It utilizes the **ESP32-S2-WROOM** microcontroller, which supports up to 4 RMT c
 
 
 ## 🛠️ Controller view
-<img width="915" height="696" alt="image" src="https://github.com/user-attachments/assets/ba949e85-a7b5-4301-97c7-c4e28e1ba06b" />
+<img width="457" height="348" alt="image" src="https://github.com/user-attachments/assets/ba949e85-a7b5-4301-97c7-c4e28e1ba06b" />
 
 
