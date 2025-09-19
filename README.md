@@ -61,5 +61,8 @@ It utilizes the **ESP32-S2-WROOM** microcontroller, which supports up to 4 RMT c
   - [ ] Store the last known configuration for each damper channel.  
   - [ ] Save Wi-Fi credentials.
 
-<img width="1582" height="1329" alt="image" src="https://github.com/user-attachments/assets/a93050ca-5583-4079-ab27-720d1afd4808" />
+
+## 🛠️ Controller view
+<img width="915" height="696" alt="image" src="https://github.com/user-attachments/assets/ba949e85-a7b5-4301-97c7-c4e28e1ba06b" />
+
 
