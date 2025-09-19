@@ -59,4 +59,7 @@ It utilizes the **ESP32-S2-WROOM** microcontroller, which supports up to 4 RMT c
 - [ ] Add a user interface for updating Wi-Fi credentials.  
 - [ ] Utilize EEPROM to:  
   - [ ] Store the last known configuration for each damper channel.  
-  - [ ] Save Wi-Fi credentials.  
+  - [ ] Save Wi-Fi credentials.
+
+<img width="1582" height="1329" alt="image" src="https://github.com/user-attachments/assets/a93050ca-5583-4079-ab27-720d1afd4808" />
+
