@@ -55,7 +55,6 @@ It utilizes the **ESP32-S2-WROOM** microcontroller, which supports up to 4 RMT c
 
 ## 📝 TODO
 
-- [ ] Verify successful RMT command transmission by detecting a low-level long pulse after sending.  
 - [ ] Add a user interface for updating Wi-Fi credentials.  
 - [ ] Utilize EEPROM to:  
   - [ ] Store the last known configuration for each damper channel.  
