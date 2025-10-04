@@ -1,5 +1,6 @@
 #include "rx.h"
 #include "helpers.h"
+#include "driver/gpio.h"
 
 rmt_symbol_word_t rx_buffer[NUM_CHANNELS][RX_BUFFER_SIZE];
 rmt_symbol_word_t rx_data_copy[NUM_CHANNELS][RX_FRAMES][RX_BUFFER_SIZE];
@@ -10,17 +11,85 @@ size_t rx_last_call[NUM_CHANNELS] = {0};
 rmt_channel_handle_t rx_channel[NUM_CHANNELS] = {NULL};
 rx_data_t rx_data[NUM_CHANNELS] = {};
 volatile bool rx_new_data[NUM_CHANNELS] = {};
+size_t ack_timer[NUM_CHANNELS] = {0};
+bool ack_active[NUM_CHANNELS] = {false};
+bool ack_timeout[NUM_CHANNELS] = {false};
+
+
+esp_timer_handle_t oneshot_timer[NUM_CHANNELS] = {NULL};
 
 rmt_receive_config_t rx_config = {
     .signal_range_min_ns = 2000,
     .signal_range_max_ns = 2500000,
 };
 
+void ack_irq_init(uint8_t ch) {
+    esp_timer_create_args_t timer_args = {
+        .callback = &oneshot_timer_callback,
+        .arg = (void*)ch,     // pass channel index here
+        .dispatch_method = ESP_TIMER_TASK,
+    };
+
+    ESP_ERROR_CHECK(esp_timer_create(&timer_args, &oneshot_timer[ch]));
+}
+
+void ack_irq_start(uint8_t ch) {
+    ack_timeout[ch] = false;
+    ESP_ERROR_CHECK(esp_timer_start_once(oneshot_timer[ch], 2200000));
+}
+
+void ack_irq_stop(uint8_t ch) {
+    ack_timeout[ch] = false;
+    ESP_ERROR_CHECK(esp_timer_stop(oneshot_timer[ch]));
+}
+
+void ack_gpio_init(uint8_t ch) {
+    gpio_config_t io_conf = {
+        .pin_bit_mask = 1ULL << CHANNEL_GPIOS[ch],
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_ANYEDGE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CHANNEL_GPIOS[ch], ack_gpio_isr, (void *)ch));
+}
+
+void ack_gpio_remove(uint8_t ch) {
+    ESP_ERROR_CHECK(gpio_isr_handler_remove(CHANNEL_GPIOS[ch]));
+    ack_timer[ch] = 0;
+}
+
+void IRAM_ATTR oneshot_timer_callback(void *arg) {
+    int ch = (int)(intptr_t)arg;
+    ack_timeout[ch] = true;
+    ack_gpio_remove(ch);
+}
+
+void IRAM_ATTR ack_gpio_isr(void *arg) {
+    int ch = (int)(intptr_t)arg;
+    bool state = digitalRead(CHANNEL_GPIOS[ch]);
+    uint32_t now = micros();
+
+    if (state) {  // Rising edge → pulse end
+        uint32_t width = now - ack_timer[ch];
+        if (ack_timer[ch] != 0 && width > 500000) { 
+            ack_active[ch] = true;
+            ack_gpio_remove(ch);
+            ack_irq_stop(ch);
+        }
+    } 
+    else {  // Falling edge → pulse start
+        if (ack_timer[ch] == 0) ack_timer[ch] = now;
+    }
+}
+
 bool rmt_rx_done_callback(rmt_channel_handle_t channel, const rmt_rx_done_event_data_t *edata, void *user_data) {
     int ch = (int)(intptr_t)user_data;
     if (ch < 0 || ch >= NUM_CHANNELS) return false;
 
     size_t count = edata->num_symbols;
+
     if (micros() - rx_last_call[ch] > FRAME_TIMEOUT_US) clear_rx_buffers(ch);
     if (count > RX_BUFFER_SIZE) count = RX_BUFFER_SIZE;
     if (count == 57) {
@@ -29,6 +98,8 @@ bool rmt_rx_done_callback(rmt_channel_handle_t channel, const rmt_rx_done_event_
         rx_data_chunk[ch]++;
         if (rx_data_chunk[ch] == RX_FRAMES) { rx_data_chunk[ch] = 0; data_ready[ch] = true; }
     }
+
+
 
     rmt_receive(rx_channel[ch], rx_buffer[ch], sizeof(rx_buffer[ch]), &rx_config);
     rx_last_call[ch] = micros();

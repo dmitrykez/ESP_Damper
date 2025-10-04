@@ -2,7 +2,6 @@
 
 rmt_channel_handle_t tx_channel[NUM_CHANNELS] = { NULL };
 rmt_encoder_handle_t copy_encoder[NUM_CHANNELS] = { NULL };
-size_t tx_last_call[NUM_CHANNELS] = {0};
 
 void rmt_tx_channel_config(uint8_t ch, gpio_num_t gpio) {
     if (ch >= NUM_CHANNELS) return;
@@ -130,5 +129,5 @@ void send_tx_payload(uint8_t ch, gpio_num_t gpio, uint8_t temperature, bool stat
     ESP_ERROR_CHECK(rmt_tx_wait_all_done(tx_channel[ch], 3000));
 
     Serial.printf("Sent one frame on ch %u\n", (unsigned)ch);
-    delay(500);
+    delay(100);
 }

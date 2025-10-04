@@ -23,3 +23,4 @@ extern AsyncWebServer server;
 void wireless_setup();
 void wireless_loop();
 void public_message(uint8_t ch, uint8_t temp, String state, uint8_t fan);
+void public_debug_message(String msg);

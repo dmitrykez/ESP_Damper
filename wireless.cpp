@@ -35,7 +35,6 @@ void wireless_setup() {
 
     server.begin();
     Serial.println("HTTP server started");
-
     ElegantOTA.begin(&server);    // Start ElegantOTA
     
     client.setServer(MQTT_SRVR, MQTT_PORT);
@@ -61,11 +60,12 @@ static void reconnect() {
     }
 
     String clientId = "ESP32-Damper";
-    clientId += String(random(0xffff), HEX);
     if (client.connect(clientId.c_str())) {
       Serial.println("MQTT connected");
       client.publish("/home/damper_cmd", "", true); // Clear retained message
-      client.subscribe("/home/damper_cmd"); 
+      client.unsubscribe("/home/damper_cmd");
+      client.subscribe("/home/damper_cmd");
+      
     } else {
       Serial.print(" Failed, rc=");
       Serial.println(client.state());
@@ -114,12 +114,16 @@ static void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     }
   }
 
-// Just store request
-  tx_requests[ch].pending = true;
-  tx_requests[ch].ch = ch;
-  tx_requests[ch].temp = temp;
-  tx_requests[ch].state = state;
-  tx_requests[ch].fan = fan;
+  if (!tx_requests[ch].pending) {
+      // Just store request
+      tx_requests[ch].pending = true;
+      tx_requests[ch].ch = ch;
+      tx_requests[ch].temp = temp;
+      tx_requests[ch].state = state;
+      tx_requests[ch].fan = fan;
+  }
+  else
+      public_debug_message("Received duplicate command on ch " + String(ch));
 }
 
 void public_message(uint8_t ch, uint8_t temp, String state, uint8_t fan) {
@@ -131,6 +135,17 @@ void public_message(uint8_t ch, uint8_t temp, String state, uint8_t fan) {
   doc["state"] = state;
   doc["fan"] = fan;
 
+  serializeJson(doc, output);
+  Serial.println(output);
+  client.publish("/home/damper", output);
+}
+
+void public_debug_message(String msg) {
+  StaticJsonDocument<180> doc;
+  char output[180];
+  
+  doc["msg"] = msg;
+  
   serializeJson(doc, output);
   Serial.println(output);
   client.publish("/home/damper", output);
