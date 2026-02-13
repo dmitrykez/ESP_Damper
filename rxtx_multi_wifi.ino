@@ -5,44 +5,53 @@
 // To get to update page by direct IP address:
 // Remove "update" in ElegantOTA.cpp:
 //    _server->on("/update", HTTP_GET, [&](AsyncWebServerRequest *request)
-//
-// Set your WIFI and MQTT details in wireless.cpp:
-//	  #define WIFI_SSID "WIFI_NAME"
-//    #define WIFI_PASS "WIFI_PASS"
-//    #define MQTT_SRVR "192.168.1.123"
-//    #define MQTT_PORT 1883
 
 
 #include "wireless.h"
 #include "rx.h"
 #include "tx.h"
 #include "helpers.h"
+#include "config.h"
+#include "reset.h"
 
-#define VERSION "1.1.3"
+#define VERSION "1.1.10"
 
-#define PWR_LED 16
-
+const char* FW_VERSION_STR = VERSION;
 bool single_shot = true;
 mqtt_data_t mqtt_data[NUM_CHANNELS];
 
 void setup() {
     Serial.begin(115200);
     delay(500);
+    
+    led_task_start();
+    led_set_blink(250);
+
+    config_begin();
+    config_load();
+    
+    reset_task_start();
+
     Serial.println();
     Serial.print("Current FW version: ");
     Serial.println(VERSION);
-    Serial.println("Starting RMT RX/TX multi channel...");
-    pinMode(PWR_LED, OUTPUT);
-    
+    Serial.println("Starting WiFi...");
+        
     wireless_setup();
 
+    Serial.println("Starting RMT RX/TX multi channel...");
     for (uint8_t ch = 0; ch < NUM_CHANNELS; ++ch) {
         rmt_rx_channel_config(ch, CHANNEL_GPIOS[ch]);
         ack_irq_init(ch);
         rx_last_call[ch] = micros();
     }
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
-    digitalWrite(PWR_LED, LOW);
+    
+    // uint8_t g_channel_offset = device_config.extended_channels ? 4 : 0;
+    Serial.print("Device serving channels: ");
+    Serial.println(device_config.extended_channels ? "4-7" : "0-3");
+
+    led_set_on();
 }
 
 void loop() {
@@ -55,8 +64,8 @@ void loop() {
                 rx_new_data[ch] = false;
                 ack_irq_start(ch);
                 ack_gpio_init(ch);
-
-                mqtt_data[ch].ch = ch;
+                
+                mqtt_data[ch].ch = ch + device_config.extended_channels * 4;
                 mqtt_data[ch].temp = rx_data[ch].temp;
                 mqtt_data[ch].state = rx_data[ch].state;
                 mqtt_data[ch].fan = rx_data[ch].fan;
@@ -74,7 +83,7 @@ void loop() {
             ack_irq_start(ch);
             ack_gpio_init(ch);
             
-            mqtt_data[ch].ch = ch;
+            mqtt_data[ch].ch = ch + device_config.extended_channels * 4;
             mqtt_data[ch].temp = tx_requests[ch].temp;
             mqtt_data[ch].state = tx_requests[ch].state;
             mqtt_data[ch].fan = tx_requests[ch].fan;
@@ -95,7 +104,7 @@ void loop() {
     // Handle NACK signal
     for (uint8_t ch = 0; ch < NUM_CHANNELS; ++ch) {
         if (ack_timeout[ch]) {
-            public_debug_message("Ch " + String(ch) + " command failed");
+            public_debug_message("Ch " + String(ch + device_config.extended_channels * 4) + " command failed");
             mqtt_data[ch].pending = false;
             tx_requests[ch].pending = false;
             ack_timeout[ch] = false;

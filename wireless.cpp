@@ -1,12 +1,12 @@
 #include "wireless.h"
 #include "tx.h"
 #include "rx.h"
+#include "web.h"
 #include <ArduinoJson.h>
 
-#define WIFI_SSID "WIFI_NAME"
-#define WIFI_PASS "WIFI_PASS"
-#define MQTT_SRVR "192.168.1.123"
-#define MQTT_PORT 1883
+#define AP_IP       IPAddress(192, 168, 50, 1)
+#define AP_GATEWAY  IPAddress(192, 168, 50, 1)
+#define AP_SUBNET   IPAddress(255, 255, 255, 0)
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -17,36 +17,37 @@ static void reconnect();
 static void mqtt_callback(char* topic, byte* payload, unsigned int length);
 
 void wireless_setup() {
+    bool wifi_sta_mode = true;
+    if (device_config.wifi_ssid[0] == '\0')
+        wifi_sta_mode = false;
+  
+    if(wifi_sta_mode)
+        start_sta_mode();
+    else
+        start_ap_mode();
 
-    Serial.print("Connecting to: ");
-    Serial.print(WIFI_SSID);
-    WiFi.setHostname("ESP Damper");
-    WiFi.setSleep(true);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println(" connected");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-
+    web_begin(server, client);
     server.begin();
     Serial.println("HTTP server started");
     ElegantOTA.begin(&server);    // Start ElegantOTA
     
-    client.setServer(MQTT_SRVR, MQTT_PORT);
-    client.setCallback(mqtt_callback);
+    if(wifi_sta_mode) {
+        led_set_blink(100);
+        client.setServer(device_config.mqtt_server, device_config.mqtt_port);
+        client.setCallback(mqtt_callback);
+    }
 }
 
 void wireless_loop() {
-    if (!client.connected()) {
-        reconnect();
-        if (client.connected()) Serial.println("Reconnected");
+    if(WiFi.getMode() == WIFI_AP) 
+        led_set_blink(1000);
+    else {
+        if (!client.connected()) {
+            reconnect();
+            if (client.connected()) Serial.println("Reconnected");
+        }
+        client.loop();
     }
-    client.loop();
     ElegantOTA.loop();
 }
 
@@ -59,12 +60,11 @@ static void reconnect() {
       Serial.println(WiFi.status());
     }
 
-    String clientId = "ESP32-Damper";
+    String clientId = device_config.device_name;
     if (client.connect(clientId.c_str())) {
       Serial.println("MQTT connected");
-      client.publish("/home/damper_cmd", "", true); // Clear retained message
-      client.unsubscribe("/home/damper_cmd");
-      client.subscribe("/home/damper_cmd");
+      client.unsubscribe(device_config.mqtt_topic_rx);
+      client.subscribe(device_config.mqtt_topic_rx);
       
     } else {
       Serial.print(" Failed, rc=");
@@ -97,7 +97,11 @@ static void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   uint8_t fan=0;
 
   if (jsonDoc.containsKey("ch")) {
-    ch = jsonDoc["ch"].as<uint8_t>();
+    if (device_config.extended_channels)
+      ch = jsonDoc["ch"].as<uint8_t>() - device_config.extended_channels * 4;
+    else
+      ch = jsonDoc["ch"].as<uint8_t>();
+    if (ch >= 4) return;
   }
 
   if (jsonDoc.containsKey("temp")) {
@@ -123,7 +127,7 @@ static void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       tx_requests[ch].fan = fan;
   }
   else
-      public_debug_message("Received duplicate command on ch " + String(ch));
+      public_debug_message("Received duplicate command on ch " + String(ch + device_config.extended_channels * 4));
 }
 
 void public_message(uint8_t ch, uint8_t temp, String state, uint8_t fan) {
@@ -137,16 +141,52 @@ void public_message(uint8_t ch, uint8_t temp, String state, uint8_t fan) {
 
   serializeJson(doc, output);
   Serial.println(output);
-  client.publish("/home/damper", output);
+  client.publish(device_config.mqtt_topic_tx, output);
 }
 
 void public_debug_message(String msg) {
   StaticJsonDocument<180> doc;
   char output[180];
   
+  doc["device"] = device_config.device_name;
   doc["msg"] = msg;
   
   serializeJson(doc, output);
   Serial.println(output);
-  client.publish("/home/damper", output);
+  client.publish(device_config.mqtt_topic_tx, output);
+}
+
+void start_ap_mode() {
+    Serial.println("No WiFi SSID configured, entering AP mode");
+    WiFi.mode(WIFI_AP);
+    // Set static IP for AP mode
+    if (!WiFi.softAPConfig(AP_IP, AP_GATEWAY, AP_SUBNET)) {
+        Serial.println("Failed to configure AP IP");
+    }
+
+    WiFi.softAP("ESP_Damper_Setup");
+
+    Serial.println("AP mode started");
+    Serial.print("AP IP: ");
+    Serial.println(WiFi.softAPIP());
+
+    led_set_blink(1000);   // Slow blink in AP mode
+}
+
+void start_sta_mode() {
+    Serial.print("Connecting to: ");
+    Serial.print(device_config.wifi_ssid);
+    WiFi.mode(WIFI_STA);
+    WiFi.setHostname(device_config.device_name);
+    WiFi.setSleep(true);
+    WiFi.begin(device_config.wifi_ssid, device_config.wifi_pass);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println(" connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
 }
