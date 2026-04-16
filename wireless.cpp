@@ -53,6 +53,8 @@ void wireless_loop() {
 
 static void reconnect() {
   int counter = 0;
+  bool ok = false;
+
   while (!client.connected()) {
     Serial.println("Attempting MQTT connection...");
     if(WiFi.status() != WL_CONNECTED){
@@ -60,12 +62,18 @@ static void reconnect() {
       Serial.println(WiFi.status());
     }
 
-    String clientId = device_config.device_name;
-    if (client.connect(clientId.c_str())) {
+    if (device_config.mqtt_user[0] != '\0') {
+      ok = client.connect(device_config.device_name,
+                          device_config.mqtt_user,
+                          device_config.mqtt_pass);
+    } else {
+      ok = client.connect(device_config.device_name);
+    }
+
+    if (ok) {
       Serial.println("MQTT connected");
       client.unsubscribe(device_config.mqtt_topic_rx);
-      client.subscribe(device_config.mqtt_topic_rx);
-      
+      client.subscribe(device_config.mqtt_topic_rx);  
     } else {
       Serial.print(" Failed, rc=");
       Serial.println(client.state());

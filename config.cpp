@@ -14,6 +14,8 @@ void config_set_defaults() {
     strcpy(device_config.mqtt_topic_tx, "/home/damper");
     device_config.dark_mode = false;
     device_config.extended_channels = false;
+    device_config.mqtt_user[0] = '\0';
+    device_config.mqtt_pass[0] = '\0';
 }
 
 void config_begin() {

@@ -11,6 +11,8 @@ typedef struct {
     char mqtt_topic_tx[64];
     bool dark_mode;
     bool extended_channels;
+    char mqtt_user[32];
+    char mqtt_pass[64];
 } device_config_t;
 
 extern device_config_t device_config;

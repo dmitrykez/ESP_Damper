@@ -14,7 +14,7 @@
 #include "config.h"
 #include "reset.h"
 
-#define VERSION "1.1.10"
+#define VERSION "1.1.11"
 
 const char* FW_VERSION_STR = VERSION;
 bool single_shot = true;
