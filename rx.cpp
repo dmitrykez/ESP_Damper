@@ -14,6 +14,7 @@ volatile bool rx_new_data[NUM_CHANNELS] = {};
 size_t ack_timer[NUM_CHANNELS] = {0};
 bool ack_active[NUM_CHANNELS] = {false};
 bool ack_timeout[NUM_CHANNELS] = {false};
+size_t ack_width[NUM_CHANNELS] = {0};
 
 
 esp_timer_handle_t oneshot_timer[NUM_CHANNELS] = {NULL};
@@ -63,6 +64,7 @@ void ack_gpio_remove(uint8_t ch) {
 void IRAM_ATTR oneshot_timer_callback(void *arg) {
     int ch = (int)(intptr_t)arg;
     ack_timeout[ch] = true;
+    ack_width[ch] = 0;
     ack_gpio_remove(ch);
 }
 
@@ -73,6 +75,7 @@ void IRAM_ATTR ack_gpio_isr(void *arg) {
 
     if (state) {  // Rising edge → pulse end
         uint32_t width = now - ack_timer[ch];
+        ack_width[ch] = width;
         if (ack_timer[ch] != 0 && width > 500000) { 
             ack_active[ch] = true;
             ack_gpio_remove(ch);

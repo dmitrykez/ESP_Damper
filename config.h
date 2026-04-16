@@ -13,6 +13,7 @@ typedef struct {
     bool extended_channels;
     char mqtt_user[32];
     char mqtt_pass[64];
+    bool debug_verbose;
 } device_config_t;
 
 extern device_config_t device_config;

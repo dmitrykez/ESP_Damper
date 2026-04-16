@@ -16,6 +16,7 @@ void config_set_defaults() {
     device_config.extended_channels = false;
     device_config.mqtt_user[0] = '\0';
     device_config.mqtt_pass[0] = '\0';
+    device_config.debug_verbose = false;   
 }
 
 void config_begin() {

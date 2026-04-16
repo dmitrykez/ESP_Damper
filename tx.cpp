@@ -126,7 +126,7 @@ void send_tx_payload(uint8_t ch, gpio_num_t gpio, uint8_t temperature, bool stat
     rmt_transmit_config_t tx_cfg = { .loop_count = 0, .flags = { .eot_level = 1 } };
 
     ESP_ERROR_CHECK(rmt_transmit(tx_channel[ch], copy_encoder[ch], syms, n_syms * sizeof(rmt_symbol_word_t), &tx_cfg));
-    ESP_ERROR_CHECK(rmt_tx_wait_all_done(tx_channel[ch], 3000));
+    ESP_ERROR_CHECK(rmt_tx_wait_all_done(tx_channel[ch], 1000));
 
     Serial.printf("Sent one frame on ch %u\n", (unsigned)ch);
     delay(100);

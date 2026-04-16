@@ -28,6 +28,8 @@ extern size_t rx_last_call[NUM_CHANNELS];
 extern rmt_channel_handle_t rx_channel[NUM_CHANNELS];
 extern bool ack_active[NUM_CHANNELS];
 extern bool ack_timeout[NUM_CHANNELS];
+extern size_t ack_width[NUM_CHANNELS];
+
 
 // RX config
 extern rmt_receive_config_t rx_config;

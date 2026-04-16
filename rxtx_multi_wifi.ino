@@ -14,7 +14,7 @@
 #include "config.h"
 #include "reset.h"
 
-#define VERSION "1.1.11"
+#define VERSION "1.1.12"
 
 const char* FW_VERSION_STR = VERSION;
 bool single_shot = true;
@@ -30,6 +30,9 @@ void setup() {
     config_begin();
     config_load();
     
+    if(device_config.debug_verbose)
+      Serial.println("Debug verbosity enabled");
+
     reset_task_start();
 
     Serial.println();
@@ -80,8 +83,8 @@ void loop() {
             send_tx_payload(ch, CHANNEL_GPIOS[ch], tx_requests[ch].temp, tx_requests[ch].state == "on", tx_requests[ch].fan);
 
             reconfig_rmt_rx_channel(ch, CHANNEL_GPIOS[ch]);
-            ack_irq_start(ch);
             ack_gpio_init(ch);
+            ack_irq_start(ch);
             
             mqtt_data[ch].ch = ch + device_config.extended_channels * 4;
             mqtt_data[ch].temp = tx_requests[ch].temp;
@@ -110,7 +113,16 @@ void loop() {
             ack_timeout[ch] = false;
         }
     }
- 
+
+    if(device_config.debug_verbose) {
+        for (uint8_t ch = 0; ch < NUM_CHANNELS; ++ch) {
+            if (ack_width[ch] > 0) {
+                public_debug_message("Ch " + String(ch + device_config.extended_channels * 4) + " ACK width is " + String(ack_width[ch]));
+                ack_width[ch] = 0;
+            }
+        }
+    }
+    
     // Send MQTT message when ESP has booted
     if (single_shot){
         public_debug_message("ESP boot done, version " + String(VERSION));

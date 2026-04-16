@@ -91,7 +91,7 @@ static String buildConfigPageHtml() {
     ".chip.err{background:#d64a42;color:#ffffff;border-color:#963732;}"
     "[data-theme='dark'] .chip.ok{color:#0b0b0c;}"
     ".sub{margin-top:10px;color:var(--muted);font-size:12px;word-break:break-word;}"
-    ".switch{position:relative;display:inline-block;width:54px;height:32px;}"
+    ".switch{position:relative;display:inline-block;width:54px;height:32px;top:2px}"
     ".switch input{display:none;}"
     ".slider{position:absolute;cursor:pointer;inset:0;background:#797979;border-radius:999px;transition:.2s;}"
     ".slider:before{content:'';position:absolute;height:26px;width:26px;left:3px;top:3px;background:white;border-radius:999px;transition:.2s;box-shadow:0 2px 10px rgba(0,0,0,.12);}"
@@ -201,8 +201,22 @@ static String buildConfigPageHtml() {
   html += F(
     "<div class='section'>"
     "<div class='field' style='display:flex;align-items:center;justify-content:space-between;'>"
-    "<div><label>Dark UI</label><div style='font-size:16px;font-weight:400;'>Appearance</div></div>"
+    "<div style='font-size:16px;font-weight:400;'>Dark UI</div>"
     "<label class='switch'><input id='darkToggle' type='checkbox'><span class='slider'></span></label>"
+    "</div></div>"
+  );
+
+  // Debug verbosity
+  html += F(
+    "<div class='section'>"
+    "<div class='field' style='display:flex;align-items:center;justify-content:space-between;'>"
+    "<div style='font-size:16px;font-weight:400;'>Debug verbosity</div>"
+    "<label class='switch'>"
+    "<input type='checkbox' name='debug' value='1' "
+  );
+  html += device_config.debug_verbose ? "checked" : "";
+  html += F(
+    "><span class='slider'></span></label>"
     "</div></div>"
   );
 
@@ -335,8 +349,18 @@ void web_begin(AsyncWebServer& server, PubSubClient& mqttClient) {
     update_str_if_changed("ssid",    device_config.wifi_ssid, sizeof(device_config.wifi_ssid));
     update_str_if_changed("muser",   device_config.mqtt_user, sizeof(device_config.mqtt_user));
    
+    device_config.debug_verbose = request->hasParam("debug", true);
+
     if (device_config.wifi_ssid[0] == '\0') device_config.wifi_pass[0] = '\0';
     if (device_config.mqtt_user[0] == '\0') device_config.mqtt_pass[0] = '\0';
+
+    if (request->hasParam("ch_range", true)) {
+      String v = request->getParam("ch_range", true)->value();
+      bool newFlag = (v == "high");
+      if (newFlag != device_config.extended_channels) {
+        device_config.extended_channels = newFlag;
+      }
+    }
 
     if (request->hasParam("ch_range", true)) {
       String v = request->getParam("ch_range", true)->value();
@@ -444,7 +468,7 @@ void web_begin(AsyncWebServer& server, PubSubClient& mqttClient) {
     doc["mqtt_state"]     = mqttClient.state();
     doc["mqtt_server"]    = String(device_config.mqtt_server);
     doc["mqtt_port"]      = device_config.mqtt_port;
-    doc["mqtt_auth"] = (device_config.mqtt_user[0] != '\0');
+    doc["mqtt_auth"]      = (device_config.mqtt_user[0] != '\0');
 
     String out;
     serializeJson(doc, out);
