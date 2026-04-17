@@ -114,12 +114,11 @@ void loop() {
         }
     }
 
-    if(device_config.debug_verbose) {
-        for (uint8_t ch = 0; ch < NUM_CHANNELS; ++ch) {
-            if (ack_width[ch] > 0) {
+    for (uint8_t ch = 0; ch < NUM_CHANNELS; ++ch) {
+        if (ack_width[ch] > 0) {
+            if(device_config.debug_verbose)
                 public_debug_message("Ch " + String(ch + device_config.extended_channels * 4) + " ACK width is " + String(ack_width[ch]));
-                ack_width[ch] = 0;
-            }
+            ack_width[ch] = 0;
         }
     }
     
