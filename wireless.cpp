@@ -2,7 +2,6 @@
 #include "tx.h"
 #include "rx.h"
 #include "web.h"
-#include <ArduinoJson.h>
 
 #define AP_IP       IPAddress(192, 168, 50, 1)
 #define AP_GATEWAY  IPAddress(192, 168, 50, 1)
@@ -34,6 +33,7 @@ void wireless_setup() {
     if(wifi_sta_mode) {
         led_set_blink(100);
         client.setServer(device_config.mqtt_server, device_config.mqtt_port);
+        client.setBufferSize(2048);
         client.setCallback(mqtt_callback);
     }
 }
@@ -153,15 +153,33 @@ void public_message(uint8_t ch, uint8_t temp, String state, uint8_t fan) {
 }
 
 void public_debug_message(String msg) {
-  StaticJsonDocument<180> doc;
-  char output[180];
+  StaticJsonDocument<1024> doc;
+  char output[1024];
   
   doc["device"] = device_config.device_name;
   doc["msg"] = msg;
   
   serializeJson(doc, output);
   Serial.println(output);
-  client.publish(device_config.mqtt_topic_tx, output);
+  if (!client.publish(device_config.mqtt_topic_tx, output)) {
+      doc["msg"] = "MQTT publish failed!";
+      serializeJson(doc, output);
+      client.publish(device_config.mqtt_topic_tx, output);
+  }
+}
+
+void public_raw_message(StaticJsonDocument<2048> doc) {
+  char output[2048];
+  
+  doc["device"] = device_config.device_name;
+  
+  serializeJson(doc, output);
+  Serial.println(output);
+  if (!client.publish(device_config.mqtt_topic_tx, output)) {
+      doc["msg"] = "MQTT publish failed!";
+      serializeJson(doc, output);
+      client.publish(device_config.mqtt_topic_tx, output);
+  }
 }
 
 void start_ap_mode() {

@@ -2,6 +2,12 @@
 #include "helpers.h"
 #include "driver/gpio.h"
 
+static rx_frame_cb_t rx_cb = nullptr;
+
+void rx_set_callback(rx_frame_cb_t cb) {
+  rx_cb = cb;
+}
+
 rmt_symbol_word_t rx_buffer[NUM_CHANNELS][RX_BUFFER_SIZE];
 rmt_symbol_word_t rx_data_copy[NUM_CHANNELS][RX_FRAMES][RX_BUFFER_SIZE];
 size_t rx_data_len[NUM_CHANNELS] = {0};
@@ -199,11 +205,15 @@ bool parseRMTData() {
                 }
             }
 
-            if (bits.length() > 0) frames.push_back(bits);
+            if (bits.length() > 0) {
+                frames.push_back(bits);
+            }
             else {
                 frames.push_back(DUMMY_FRAME);
                 Serial.printf("Ch %d broken chunk diagnostics: level0=%d level1=%d dur0=%d dur1=%d\n", ch, level0, level1, duration0, duration1);
             }
+            
+            if(rx_cb) rx_cb(ch, symbols, len * sizeof(rmt_symbol_word_t), bits); // Backup data for debug
         }
 
         if (frames.size() == RX_FRAMES) {

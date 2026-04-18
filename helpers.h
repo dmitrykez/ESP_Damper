@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <vector>
 #include "defaults.h"
 #include "globals.h"

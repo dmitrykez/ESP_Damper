@@ -3,6 +3,7 @@
 // Utility: converts binary string to hex string
 String binaryToHexGroups(const String &binStr) {
     String padded = binStr;
+    if (padded.length() == 0) return "";
     while (padded.length() % 8 != 0) padded = "0" + padded;
     String result;
     for (int i = 0; i < padded.length(); i += 8) {

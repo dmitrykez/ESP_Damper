@@ -14,7 +14,7 @@
 #include "config.h"
 #include "reset.h"
 
-#define VERSION "1.1.12"
+#define VERSION "1.1.13"
 
 const char* FW_VERSION_STR = VERSION;
 bool single_shot = true;
@@ -53,6 +53,8 @@ void setup() {
     // uint8_t g_channel_offset = device_config.extended_channels ? 4 : 0;
     Serial.print("Device serving channels: ");
     Serial.println(device_config.extended_channels ? "4-7" : "0-3");
+
+    rx_set_callback(on_rx_frame); // Debug data callback
 
     led_set_on();
 }
@@ -127,4 +129,24 @@ void loop() {
         public_debug_message("ESP boot done, version " + String(VERSION));
         single_shot = false;
     }
+}
+
+void on_rx_frame(uint8_t ch, const rmt_symbol_word_t* symbols, size_t num_symbols, const String& bits) {
+  if (!device_config.debug_verbose) return;
+  StaticJsonDocument<2048> doc;
+
+  doc["type"] = "raw_data";
+  doc["ch"]   = ch;
+  doc["hex"]  = binaryToHexGroups(bits);
+
+  JsonArray raw = doc.createNestedArray("raw");
+
+  for (size_t i = 0; i < num_symbols; i++) {
+    raw.add(symbols[i].duration0);
+    raw.add(symbols[i].duration1);
+  }
+
+  doc["len"] = num_symbols;
+
+  public_raw_message(doc);
 }

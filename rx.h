@@ -2,6 +2,15 @@
 #include "globals.h"
 #include <vector>
 
+typedef void (*rx_frame_cb_t)(
+  uint8_t ch,
+  const rmt_symbol_word_t* symbols,
+  size_t num_symbols,
+  const String& bits
+);
+
+void rx_set_callback(rx_frame_cb_t cb);
+
 extern volatile bool rx_new_data[NUM_CHANNELS];
 extern rx_data_t rx_data[NUM_CHANNELS];
 

@@ -7,6 +7,7 @@
 #include "defaults.h"
 #include "config.h"
 #include "status_led.h"
+#include <ArduinoJson.h>
 
 typedef struct {
     bool pending;
@@ -26,5 +27,6 @@ void wireless_setup();
 void wireless_loop();
 void public_message(uint8_t ch, uint8_t temp, String state, uint8_t fan);
 void public_debug_message(String msg);
+void public_raw_message(StaticJsonDocument<2048> doc);
 void start_ap_mode();
 void start_sta_mode();
